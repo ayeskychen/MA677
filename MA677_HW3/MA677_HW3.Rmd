@@ -1,0 +1,120 @@
+---
+title: "MA677_HW3"
+author: "Sky Liu"
+date: "3/8/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Hmisc)
+```
+
+```{r}
+mu = read.table("maybe_uniform.txt")
+mu<-c(mu[1,],mu[2,],mu[3,],mu[4,],mu[5,])
+mu<-as.numeric(mu)
+ks.test(mu, "punif")
+hist(mu)
+
+plot(1:25,mu)
+```
+
+Given the p value of KS test being 0.35, we fail to reject the null hypothsis that the data from maybe_uniform txt is uniformlly distributed.
+
+```{r}
+
+x<-seq(-10, 10, by=0.001)
+fx <- ifelse(x > 0 & x <=0.5, 2/3,
+   ifelse(x > 0.5 & x < 1,  1/2, 0))
+ks.test(fx,mu)
+```
+From the KS test, we could see that the data does not have matched distribution with the piecewise model, with very small p value and much higher D value than the previous one. Thus, the model is not better than uniform distribution.
+
+```{r}
+ks.test(mu, "pgamma", rate = 2, shape = 1) 
+```
+
+The KS test of gamma distribution with rate = 2 and shape = 1 gives even smaller D value than uniform distribution, showing the gamma distribution is a bit better.
+
+
+## Problem 2
+
+```{r}
+
+mn = read.table("maybe_normal.txt")
+mn<-c(mn[1,],mn[2,],mn[3,],mn[4,],mn[5,])
+mn<-as.numeric(mn)
+
+n25 <- rnorm(25, 26, 4)
+ks.test(mn, n25)
+mean(mn)
+var(mn)
+hist(mn)
+qqplot(1:25,mn)
+```
+
+Given the p value of KS test being 0.285, we fail to reject the null hypothsis that the data from maybe_normal txt is normally distributed.
+
+## Problem 3
+
+```{r}
+
+X = read.table("maybe_same_1.txt")
+X<-c(X[1,],X[2,],X[3,],X[4,],X[5,])
+X<-as.numeric(X)
+
+Y = read.table("maybe_same_2.txt")
+Y<-c(Y[1,],Y[2,],Y[3,],Y[4,],Y[5,])
+Y<-as.numeric(Y)
+X2<-X+2
+
+ks.test(X, Y)
+ks.test(X+2, Y)
+
+```
+
+Given the p value of KS test between X and Y being 0.491, we fail to reject the null hypothsis that X and Y are from the same distribution.
+
+The p value of KS test between X+2 and Y is 0.0001673, it is likely we could reject the null hypothesis that X+2 and Y are from the same distribution.
+
+## Problem 4
+```{r}
+NS <- readRDS("norm_sample.Rdata")
+NS <- as.data.frame(NS)
+colnames(NS) <- "x"
+NS_d <- ecdf(NS$x)
+NS$ecdf <- NS_d(NS$x)
+NS$nm <- pnorm(NS$x)
+NS$D <- NS$ecdf - NS$nm
+max(abs(NS$D))
+ks.test(NS$x, "pnorm", 0,  1)
+
+```
+
+The calculated D value is 0.137, the KS test D value is 0.177. From the test, we fail to reject the null hypothesis that the normal sample data is normally distributed.
+
+## Problem 5
+
+### fujiquakes
+```{r}
+FJ <- read.table("fijiquakes.dat", header = T)
+FJ_d <- ecdf(FJ$mag)
+# 95% CI for F(4.9) - F(4.3)
+CI<-sum((FJ$mag<=4.9) & (FJ$mag>4.3))
+binconf(CI,length(FJ$mag),method="wilson",0.05)
+```
+
+### faithful
+```{r}
+
+FF <- read.table("faithful.dat", header = T, skip = 25)
+f_d <- ecdf(FF$waiting)
+# 90% confidence interval for mean
+m <- mean(FF$waiting)
+se <- sd(FF$waiting)/sqrt(length(FF$waiting))
+print(paste0("90% CI for mean waiting time is [",
+             round(m-1.64*se,2),", ", round(m+1.64*se,2),"]"))
+# median waiting time
+summary(f_d)
+```
