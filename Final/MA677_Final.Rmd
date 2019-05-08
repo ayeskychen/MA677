@@ -1,0 +1,200 @@
+---
+title: "MA677_Final"
+author: "Sky Liu"
+date: "5/7/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(knitr)
+library(tidyverse)
+library(kableExtra) 
+library(pwr)
+library(effsize)
+library(maditr)
+library(fitdistrplus)
+
+options(scipen=999, digits = 3)
+options(knitr.graphics.auto_pdf = TRUE)
+```
+
+# Statistics and the Law
+```{r}
+# read data
+acorn<-read.csv("acorn.csv")
+#calculate effect size
+ef<-cohen.d(acorn$MIN,acorn$WHITE)
+ef$estimate
+# n = 20
+pwr.t.test(
+n = dim(acorn)[1], ef$estimate,
+sig.level = 0.05, power = NULL, type = c("two.sample")
+)
+
+# when power = 0.95, n = ?
+pwr.t.test(
+  n = NULL, ef$estimate,
+  sig.level = 0.05, power = 0.95, type = c("two.sample")
+  )
+# t-test
+t.test(acorn$MIN, acorn$WHITE)
+```
+
+We used two sample t-test to explore the discrimination to warrant corrective action. The power of the t-test is 1 and the p value is small enough to reject the null hypothesis of no discrimination. 
+
+To verify if the data has enough evidence, we found that when n >= 8, the power of t-test would be greater than 0.95. Therefore, given we have n = 20 in this data, it is a sufficient evidence.
+
+# Comparing Suppliers
+
+```{r}
+Dead_Bird=c(12,8,21);Display_Art=c(23,12,30);Flying_Art=c(89,62,119)
+orithopter <- as.data.frame(cbind(Dead_Bird,Display_Art,Flying_Art))
+rownames(orithopter) <- c("Area 51","BDV","Giffen")
+chisq.test(orithopter)
+
+```
+
+We use chi square test to test null hypothesis that all three schools produce the same quality ornithopters. The result of Chi square shows p-value equaling 0.9, which is larger than the siginificance level 0.05. Therefore, we reject the null hypothesis and conclude that not all three schools produce the same quality ornithopters.
+
+# How deadly are sharks?
+```{r,echo=FALSE}
+
+shark<-read.csv("sharkattack.csv")
+
+
+
+#Fatal
+USshark_fatal <- shark %>% 
+  filter(Country == "United States" ) %>%
+  filter(Fatal == "Y" | Fatal == "N")%>%
+  mutate(Fatal_code = ifelse(Fatal == "Y", 1, 0))
+
+AUshark_fatal <- shark %>% 
+  filter(Country == "Australia" ) %>%
+  filter(Fatal == "Y" | Fatal == "N")%>%
+  mutate(Fatal_code = ifelse(Fatal == "Y", 1, 0))
+```
+```{r}
+
+#calculate effect size
+ef<-cohen.d(AUshark_fatal$Fatal_code,USshark_fatal$Fatal_code)
+ef$estimate
+# n = 20
+pwr.t.test(
+  n = dim(USshark_fatal)[1], ef$estimate,
+  sig.level = 0.05, power = NULL, type = c("two.sample"),
+  alternative = "greater"
+  )
+# proportion z-test
+prop.test( x = c(
+  sum(AUshark_fatal$Fatal_code == 1),
+  sum(USshark_fatal$Fatal_code == 1) ),
+n = c(dim(AUshark_fatal)[1], dim(USshark_fatal)[1]),
+  alternative = "greater"
+)
+```
+By calculating the effect size and power analysis, we obtained the power being 1. Then, by performing a two sample test for null hypothesis that AU sharks are less or equally fatal than US shark. We obtained a p-value small enough to reject the null hypothesis. 
+
+
+
+
+
+# Power Analysis
+
+As discussed in Cohen's $\textit{Statistical Power Analysis for the Behavioral Sciences}$, the equal difference between two P value can be detected with different power, thus P cannot provide a scale of equal units of detectability. Therefore, the difference between P's is not an appropriate index of effect size.
+
+Arcsine transformation of P value solves this problem. By taking $\phi = 2 arcsine \sqrt{P}$, equal difference between $\phi$s can be detected. Unlike, $P_1 - P_2$, the value of $h = \phi_1 - \phi_2$ does not depend of value of $\phi$s and where it falls in its possibility range. Therefore, we can use to represent effect size index for a difference in proportion. 
+
+
+# Estimators
+
+
+## Exponential
+
+```{r,echo=FALSE,fig.width=2,fig.height=3}
+knitr::include_graphics(rep("IMG_0226.jpg"))
+
+
+```
+
+## A new distribution
+
+```{r,echo=FALSE}
+knitr::include_graphics(rep("IMG_0225.jpg"))
+```
+
+
+## Rain in Southern Illinois
+```{r,echo=FALSE}
+ill60 <- read.table("illinois storms/ill-60.txt", 
+                 header = FALSE)
+ill60$Year<-1960
+ill61 <- read.table("illinois storms/ill-61.txt", 
+                 header = FALSE)
+ill61$Year<-1961
+ill62 <- read.table("illinois storms/ill-62.txt", 
+                 header = FALSE)
+ill62$Year<-1962
+ill63 <- read.table("illinois storms/ill-63.txt", 
+                 header = FALSE)
+ill63$Year<-1963
+ill64 <- read.table("illinois storms/ill-64.txt", 
+                 header = FALSE)
+ill64$Year<-1964
+
+ill<-rbind(ill60,ill61,ill62,ill63,ill64)
+colnames(ill)[1]<-"Network_Avg"
+```
+
+```{r,echo=FALSE,fig.width=5,fig.height=3}
+
+
+ggplot(data=ill,aes(x = Year)) +
+  geom_histogram(bins = 20, fill = "#81D8D0")  +
+  labs( title = "Number of Storms in Illinois 1960-1964"
+)
+```
+
+```{r,echo=FALSE,fig.width=5,fig.height=3}
+
+ggplot(data=ill,aes(x = Year,y=Network_Avg,group=Year)) +
+  geom_boxplot(fill = "#81D8D0")+
+  labs( title = "Network Average in Illinois 1960-1964"
+)
+```
+
+From the two plots above we could see that 1962 had more storms than the other years while it's average raingage network was not high amoung the five years. 1961 was the year with the highest average raingage network. 
+
+```{r}
+ill_reshaped <- dcast(ill, Network_Avg ~ Year)
+fitgamma <- fitdist(ill_reshaped$Network_Avg, "gamma") 
+plot(fitgamma)
+```
+
+From the plots above, we found that gamma distribution is a good fit to rainfell data
+
+```{r}
+set.seed(20190507)
+mm <- fitdist(ill_reshaped$Network_Avg, "gamma", method = "mme") 
+bs_mm <- bootdist(mm)
+summary(bs_mm)
+
+mle <- fitdist(ill_reshaped$Network_Avg, "gamma", method = "mle") 
+bs_mle <- bootdist(mle)
+summary(bs_mle)
+```
+The estimate using bootstrap through MM method has confidence interval (0.71,1.60).
+
+The estimate using bootstrap through MLE method has narrower confidence interval (0.622,1.07).
+
+Thus, I would prefer using MLE
+
+
+# Analysis of decision theory article
+
+
+```{r,echo=FALSE}
+knitr::include_graphics(rep("IMG_0227.jpg"))
+```
